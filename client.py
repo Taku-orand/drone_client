@@ -47,6 +47,8 @@ if __name__ == '__main__':
 	r.set('command', '')
 	cmd = ''
 	show = False		# 「次の操作を待つ」ためのフラグ
+	print("操作を待っています")
+
 
 	# loop until you press Ctrl+c
 	try:
@@ -87,7 +89,9 @@ if __name__ == '__main__':
 
 
 			if key == ESC:				# exit
-				break
+				r.set('command', '_reset')
+				print("リセット")
+				show = True
 			elif key == LEFT_SHIFT:
 				r.set('command', '_pause')
 				print("停止")
