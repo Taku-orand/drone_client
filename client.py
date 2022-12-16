@@ -13,9 +13,9 @@ from sshtunnel import SSHTunnelForwarder
 ESC = 27
 LEFT_SHIFT = 225
 KEY_1 = "1"
+KEY_2 = "2"
 WASD = ["w","a","s","d"] 
-NUM_0_9 = ["0","1","2","3","4","5","6","7","8","9"]
-C_OR_M = ["c","m"]
+C_OR_M = ["cm","m"]
 
 
 # get data from redis server and decode JPEG data
@@ -36,12 +36,12 @@ def fromRedis(hRedis,topic):
 if __name__ == '__main__':
 	# Redis connection
 	ssht = SSHTunnelForwarder(
-        	("163.143.132.153", 22),
-        	ssh_host_key=None,
-        	ssh_username="uavdata",
-        	ssh_password="0158423046",
-        	ssh_pkey=None,
-        	remote_bind_address=("localhost", 6379))
+        ("163.143.132.153", 22),
+        ssh_host_key=None,
+        ssh_username="uavdata",
+        ssh_password="0158423046",
+        ssh_pkey=None,
+        remote_bind_address=("localhost", 6379))
 	ssht.start()
 	r = redis.Redis(host='localhost', port=ssht.local_bind_port, db=0)
 	r.set('command', '')
@@ -66,31 +66,26 @@ if __name__ == '__main__':
 
 			# wait key-input 1ms on OpenCV window
 			key = cv2.waitKey(1)
-				
-			if key == ord(KEY_1):		# キーボードの「1」を押すと、距離指定に変更
+
+			# キーボードの「1」を押すと、距離指定に変更
+			if key == ord(KEY_1):
 				print("距離指定に変更")
-				print("方向を入力")
-				direction = chr(int(cv2.waitKey(0)))
-				print("cmかmを入力")
-				unit = chr(int(cv2.waitKey(0)))
-				print("0~9で入力")
-				distance = chr(int(cv2.waitKey(0)))
-				print(direction, unit, distance)
-    
+				direction = input("方向を入力してください\n")
+				unit = input("cmかmを入力して下さい\n")
+				distance = input("距離を入力してください\n")
+
 				show = True
-    
+
 				# 期待されない入力は受け付けない(上に記載)
-				if direction not in WASD or unit not in C_OR_M or distance not in NUM_0_9:
+				if direction not in WASD or unit not in C_OR_M:
 					print("中止")
 					continue
-
-				move_info = direction + str(unit) + str(int(distance))
-				r.set('command', move_info)
-
+				r.set('command', direction + " " + unit + " " + distance)
 
 			if key == ESC:				# exit
 				r.set('command', '_reset')
 				print("リセット")
+				print("10秒お待ちください")
 				show = True
 			elif key == LEFT_SHIFT:
 				r.set('command', '_pause')
