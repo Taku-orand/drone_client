@@ -8,14 +8,56 @@ import redis
 import numpy as np
 import json
 from sshtunnel import SSHTunnelForwarder
+import sys
+import os
 
 # External variables 
 ESC = 27
+TAB = 9
 LEFT_SHIFT = 225
 KEY_1 = "1"
 KEY_2 = "2"
 WASD = ["w","a","s","d"] 
 C_OR_M = ["cm","m"]
+
+MANUAL_MSG = """
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<キーボード>
+- - - - - - - - - - - - - - - - - - - - - - - - - - 
+	1
+tab	q w e r t	 p
+	a s d f		l
+shift
+- - - - - - - - - - - - - - - - - - - - - - - - - - 
+<詳細>
+	1: 距離指定(terminalで操作)
+      q/e: 左/右回転
+  w/a/s/d: 前/左/後ろ/右移動
+      r/f: 上昇/下降
+        t: 離陸
+        l: 着陸
+shift/tab: 移動停止(macのみtab)
+	p: 操作方法表示
+
+※Ctrl-cで終了
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+DISTANCE_MODE_MSG = """
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+方向> w(前)a(左)s(後ろ)d(右) を指定
+単位> cm か m を指定
+距離> 距離を指定(数字のみ) 例) 9
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+def timer(time):
+	for i in range(time,-1,-1):
+		s = str(i)
+		sys.stdout.write("\033[2K\033[G%s" % s)
+		sys.stdout.flush()
+		sleep(1)
+	print()
 
 
 # get data from redis server and decode JPEG data
@@ -47,8 +89,9 @@ if __name__ == '__main__':
 	r.set('command', '')
 	cmd = ''
 	show = False		# 「次の操作を待つ」ためのフラグ
-	print("操作を待っています")
 
+	print(MANUAL_MSG)
+	print("操作を待っています")
 
 	# loop until you press Ctrl+c
 	try:
@@ -66,10 +109,13 @@ if __name__ == '__main__':
 
 			# wait key-input 1ms on OpenCV window
 			key = cv2.waitKey(1)
+			# print(key)
 
 			# キーボードの「1」を押すと、距離指定に変更
 			if key == ord(KEY_1):
-				print("距離指定に変更")
+				os.system('clear')
+				print(DISTANCE_MODE_MSG)
+				print(">距離指定に変更")
 				direction = input("方向を入力してください\n")
 				unit = input("cmかmを入力して下さい\n")
 				distance = input("距離を入力してください\n")
@@ -77,17 +123,18 @@ if __name__ == '__main__':
 				show = True
 
 				# 期待されない入力は受け付けない(上に記載)
-				if direction not in WASD or unit not in C_OR_M:
-					print("中止")
+				if direction not in WASD or unit not in C_OR_M or not distance.isdecimal():
+					print("入力が正しくありません")
 					continue
 				r.set('command', direction + " " + unit + " " + distance)
 
 			if key == ESC:				# exit
 				r.set('command', '_reset')
 				print("リセット")
-				print("10秒お待ちください")
+				print("15秒お待ちください")
+				timer(15)
 				show = True
-			elif key == LEFT_SHIFT:
+			elif key == LEFT_SHIFT or key == TAB:
 				r.set('command', '_pause')
 				print("停止")
 				show = True
@@ -140,6 +187,11 @@ if __name__ == '__main__':
 				print("降下中")
 				show = True
 
+			if(key == ord('p')):
+				os.system('clear')
+				print(MANUAL_MSG)
+				print("次の操作を待っています...")
+			
 			if(show == True):
 				print("次の操作を待っています...")
 				show = False
