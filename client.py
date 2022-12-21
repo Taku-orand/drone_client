@@ -12,25 +12,30 @@ import sys
 import os
 
 # External variables 
-ESC = 27
-TAB = 9
-LEFT_SHIFT = 225
-KEY_1 = "1"
-KEY_2 = "2"
-WASD = ["w","a","s","d"] 
-C_OR_M = ["cm","m"]
+ESC     = 27
+TAB     = 9
+L_SHIFT = 225
+KEY_1   = "1"
+KEY_2   = "2"
+KEY_3   = "3"
+WASD    = ["w","a","s","d"] 
+QE      = ["q","e"]
+RF      = ["r", "f"]
+C_OR_M  = ["cm","m"]
 
 MANUAL_MSG = """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 <キーボード>
 - - - - - - - - - - - - - - - - - - - - - - - - - - 
-	1
+	1 2 3
 tab	q w e r t	 p
 	a s d f		l
 shift
 - - - - - - - - - - - - - - - - - - - - - - - - - - 
 <詳細>
 	1: 距離指定(terminalで操作)
+	2: 角度指定(terminalで操作)
+	3: 上昇/下降距離指定(terminalで操作)
       q/e: 左/右回転
   w/a/s/d: 前/左/後ろ/右移動
       r/f: 上昇/下降
@@ -45,21 +50,47 @@ shift/tab: 移動停止(macのみtab)
 
 DISTANCE_MODE_MSG = """
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-方向> w(前)a(左)s(後ろ)d(右) を指定
+方向> w(前) a(左) s(後ろ) d(右) を指定
 単位> cm か m を指定
 距離> 距離を指定(数字のみ) 例) 9
 
-※ 中止する場合、xと入力していください
+※ 中止する場合、x と入力し続けてください
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+ANGLE_MODE_MSG = """
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+方向> q(左) e(右) を指定
+角度> 距離を指定(-:左, +:右) 例) 90→右回転90度, -45→左回転45度
+
+※ 中止する場合、x と入力し続けてください
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+VERTICAL_MODE_MSG = """
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+方向> 上昇(r) 下降(f) を指定
+単位> cm か m を指定
+距離> 距離を指定(現在地の高度からの距離) 例) 3
+
+※ 中止する場合、x と入力し続けてください
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
 def timer(time):
 	for i in range(time,-1,-1):
 		s = str(i)
-		sys.stdout.write("\033[2K\033[G%s" % s)
+		sys.stdout.write("残り " + "\033[2K\033[G%s" + "お待ちください" % s)
 		sys.stdout.flush()
 		sleep(1)
 	print()
+
+def is_num(parameter):
+	try:
+		float(parameter)
+	except:
+		return False
+	return True
 
 
 # get data from redis server and decode JPEG data
@@ -90,7 +121,7 @@ if __name__ == '__main__':
 	r = redis.Redis(host='localhost', port=ssht.local_bind_port, db=0)
 	r.set('command', '')
 	cmd = ''
-	show = False		# 「次の操作を待つ」ためのフラグ
+	show = False		# 「次の操作を待つ」を表示するためのフラグ
 
 	print(MANUAL_MSG)
 	print("操作を待っています")
@@ -107,20 +138,19 @@ if __name__ == '__main__':
 			# print( 'Battery:%d '%(dict_state['bat']) )
 
 			# show OpenCV image
-			cv2.imshow('Image from Redis', img)
+			cv2.imshow('Drone Camera', img)
 
 			# wait key-input 1ms on OpenCV window
 			key = cv2.waitKey(1)
-			# print(key)
 
 			# キーボードの「1」を押すと、距離指定に変更
 			if key == ord(KEY_1):
 				os.system('clear')
 				print(DISTANCE_MODE_MSG)
 				print(">距離指定に変更")
-				direction = input("方向を入力してください(中止する場合)\n")
-				unit = input("cmかmを入力して下さい\n")
-				distance = input("距離を入力してください\n")
+				direction = input("方向を入力してください\n")
+				unit      = input("単位を入力してください\n")
+				distance  = input("距離を入力してください\n")
 
 				show = True
 
@@ -128,15 +158,46 @@ if __name__ == '__main__':
 				if direction not in WASD or unit not in C_OR_M or not distance.isdecimal():
 					print("入力が正しくありません")
 					continue
-				r.set('command', direction + " " + unit + " " + distance)
+				r.set('command', KEY_1 + " " + direction + " " + unit + " " + distance)
+			
+			# キーボードの「2」を押すと、角度指定に変更
+			if key == ord(KEY_2):
+				os.system('clear')
+				print(ANGLE_MODE_MSG)
+				print(">角度指定に変更")
+				angle = input("角度を入力してください\n")
 
-			if key == ESC:				# exit
+				show = True
+
+				# 期待されない入力は受け付けない(上に記載)
+				if not is_num(angle):
+					print("入力が正しくありません")
+					continue
+				r.set('command', KEY_2 + " " + "None" + " " + "None" + " " + angle)
+				
+			# キーボードの「2」を押すと、上昇/下降距離指定に変更
+			if key == ord(KEY_3):
+				os.system('clear')
+				print(VERTICAL_MODE_MSG)
+				print(">上昇/下降距離指定に変更")
+				direction = input("方向を入力してください\n")
+				unit      = input("単位を入力してください\n")
+				distance  = input("距離を入力してください\n")
+
+				show = True
+
+				# 期待されない入力は受け付けない(上に記載)
+				if direction not in RF or unit not in C_OR_M or not distance.isdecimal():
+					print("入力が正しくありません")
+					continue
+				r.set('command', KEY_3 + " " + direction + " " + unit + " " + distance)
+
+			if key == ESC:				# reset
 				r.set('command', '_reset')
 				print("リセット")
-				print("15秒お待ちください")
 				timer(15)
 				show = True
-			elif key == LEFT_SHIFT or key == TAB:
+			elif key == L_SHIFT or key == TAB:
 				r.set('command', '_pause')
 				print("停止")
 				show = True
