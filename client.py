@@ -48,6 +48,8 @@ DISTANCE_MODE_MSG = """
 方向> w(前)a(左)s(後ろ)d(右) を指定
 単位> cm か m を指定
 距離> 距離を指定(数字のみ) 例) 9
+
+※ 中止する場合、xと入力していください
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 
@@ -116,7 +118,7 @@ if __name__ == '__main__':
 				os.system('clear')
 				print(DISTANCE_MODE_MSG)
 				print(">距離指定に変更")
-				direction = input("方向を入力してください\n")
+				direction = input("方向を入力してください(中止する場合)\n")
 				unit = input("cmかmを入力して下さい\n")
 				distance = input("距離を入力してください\n")
 
@@ -190,7 +192,7 @@ if __name__ == '__main__':
 			if(key == ord('p')):
 				os.system('clear')
 				print(MANUAL_MSG)
-				print("次の操作を待っています...")
+				show = True
 			
 			if(show == True):
 				print("次の操作を待っています...")
